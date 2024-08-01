@@ -33,7 +33,11 @@ SECRET_KEY = 'django-insecure-vu%t^*3!ifm^&!44ie#k5tcwgnt418#581d=)1*!ksgw9ci)s(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG') or True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'localhost',
+    '13.233.77.52',
+    'pdf-api.ddsio.com'
+]
 
 
 # Application definition
