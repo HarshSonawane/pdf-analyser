@@ -56,10 +56,27 @@ class PageResultListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-      review_requests_pk = self.kwargs.get("review_requests_pk")
-      if review_requests_pk:
-          return PageResult.objects.filter(review_request=review_requests_pk)
-      return PageResult.objects.filter(review_request__reviewer=self.request.user)
+        review_requests_pk = self.kwargs.get("review_requests_pk")
+        if review_requests_pk:
+            return PageResult.objects.filter(review_request=review_requests_pk)
+        return PageResult.objects.filter(review_request__reviewer=self.request.user)
+
+    def get(self, request, *args, **kwargs):
+        review_request_data = None
+        review_requests_pk = self.kwargs.get("review_requests_pk")
+        if review_requests_pk:
+            try:
+                review_request = ReviewRequest.objects.get(pk=review_requests_pk)
+            except ObjectDoesNotExist:
+                raise Http404
+
+            review_request_data = ReviewRequestSerializer(review_request).data
+
+        response = super().get(request, *args, **kwargs)
+        if review_request_data:
+            response.data["review_request"] = review_request_data
+
+        return response
 
     def perform_create(self, serializer):
         try:
