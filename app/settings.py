@@ -29,7 +29,7 @@ environ.Env.read_env(BASE_DIR / ".env")
 SECRET_KEY = "django-insecure-vu%t^*3!ifm^&!44ie#k5tcwgnt418#581d=)1*!ksgw9ci)s("
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("DEBUG") or True
+DEBUG = env("DEBUG")
 
 ALLOWED_HOSTS = ["localhost", "13.127.171.19", "pdf-api.ddsio.com"]
 
