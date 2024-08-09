@@ -2,13 +2,19 @@ from django.db import models
 from app.models import BaseModel
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.conf import settings
 
+import boto3
+import tempfile
+from io import BytesIO
 import fitz
 import re
 
+USE_S3 = settings.USE_S3
+
 
 def upload_to(instance, filename):
-    return "documents/{0}/{1}".format(instance.reviewer.id, filename)
+    return "documents/{0}/{1}".format(instance.id, filename)
 
 
 class ReviewRequest(BaseModel):
@@ -25,13 +31,30 @@ class ReviewRequest(BaseModel):
 @receiver(post_save, sender=ReviewRequest)
 def review_request_post_save(sender, instance, created, **kwargs):
     if created:
-        try:
-            document_path = instance.document.path
-        except:
-            document_path = instance.document.url
+        if USE_S3:
+            s3 = boto3.client("s3")
+            document = instance.document
+            path = f"media/{document.name}"
+            document_data = s3.get_object(
+                Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=path
+            )
+            document_content = document_data["Body"].read()
+            document_stream = BytesIO(document_content)
 
-        fitz_analyzer = FitsAnalyzer(document_path, instance.id)
-        instance.document.close()
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+                tmp_file.write(document_content)
+                tmp_file_path = tmp_file.name
+
+            try:
+                fitz_analyzer = FitsAnalyzer(tmp_file_path, instance.id)
+                document_stream.close()
+            finally:
+                tmp_file.close()
+                tmp_file.unlink(tmp_file_path)
+        else:
+            document_path = instance.document.path
+            fitz_analyzer = FitsAnalyzer(document_path, instance.id)
+            instance.document.close()
 
 
 class PageResult(BaseModel):
