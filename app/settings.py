@@ -169,8 +169,10 @@ if USE_S3:
     STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
-    DEFAULT_FILE_STORAGE = "app.storage_backends.MediaStorage"
+    DEFAULT_FILE_STORAGE = "app.storage_backends.PrivateMediaStorage"
 
+    PRIVATE_MEDIA_LOCATION = "private"
+    PRIVATE_FILE_STORAGE = "app.storage_backends.PrivateMediaStorage"
 else:
     STATIC_URL = "/static/"
 
