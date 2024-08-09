@@ -50,7 +50,6 @@ def review_request_post_save(sender, instance, created, **kwargs):
                 document_stream.close()
             finally:
                 tmp_file.close()
-                tmp_file.unlink(tmp_file_path)
         else:
             document_path = instance.document.path
             fitz_analyzer = FitsAnalyzer(document_path, instance.id)
