@@ -2,29 +2,34 @@ from django.db import models
 from app.models import BaseModel
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-# from services import fitz_analyzer
+
 import fitz
 import re
 
+
 def upload_to(instance, filename):
-    return 'documents/{0}/{1}'.format(instance.reviewer.id, filename)
+    return "documents/{0}/{1}".format(instance.reviewer.id, filename)
 
 
 class ReviewRequest(BaseModel):
-    status = models.CharField(max_length=100, default='pending')
-    reviewer = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    status = models.CharField(max_length=100, default="pending")
+    reviewer = models.ForeignKey("users.User", on_delete=models.CASCADE)
     document = models.FileField(upload_to=upload_to)
     comments = models.TextField()
 
     class Meta:
-        verbose_name = 'Review Request'
-        verbose_name_plural = 'Review Requests'
+        verbose_name = "Review Request"
+        verbose_name_plural = "Review Requests"
 
 
 @receiver(post_save, sender=ReviewRequest)
 def review_request_post_save(sender, instance, created, **kwargs):
     if created:
-        document_path = instance.document.path
+        try:
+            document_path = instance.document.path
+        except:
+            document_path = instance.document.url
+
         fitz_analyzer = FitsAnalyzer(document_path, instance.id)
         instance.document.close()
 
@@ -32,16 +37,18 @@ def review_request_post_save(sender, instance, created, **kwargs):
 class PageResult(BaseModel):
     review_request = models.ForeignKey(ReviewRequest, on_delete=models.CASCADE)
     page_number = models.PositiveIntegerField()
-    service = models.CharField(max_length=100) # method or service which was used to extract the data
+    service = models.CharField(
+        max_length=100
+    )  # method or service which was used to extract the data
     details = models.JSONField()
 
     def __str__(self):
-        return f'{str(self.review_request.id)} - {self.page_number}'
+        return f"{str(self.review_request.id)} - {self.page_number}"
 
     class Meta:
-        unique_together = ('review_request', 'page_number', 'service')
-        verbose_name = 'Page Result'
-        verbose_name_plural = 'Page Results'
+        unique_together = ("review_request", "page_number", "service")
+        verbose_name = "Page Result"
+        verbose_name_plural = "Page Results"
 
 
 class FitsAnalyzer:
@@ -56,8 +63,8 @@ class FitsAnalyzer:
             PageResult.objects.create(
                 review_request_id=review_request_id,
                 page_number=page_num,
-                service='fitz',
-                details=details
+                service="fitz",
+                details=details,
             )
 
     def analyse(self):
@@ -65,47 +72,47 @@ class FitsAnalyzer:
         for page_num in range(num_pages):
             page = self.pdf.load_page(page_num)
             self.analysis[page_num] = {
-                'margins': self.get_page_margins(page),
-                'is_blank': self.is_blank_page(page),
+                "margins": self.get_page_margins(page),
+                "is_blank": self.is_blank_page(page),
                 # 'is_single_side': self.is_single_side_page(page),
                 # 'is_double_side': self.is_double_side_page(page),
-                'side': 'single' if self.is_single_side_page(page) else 'double',
-                'is_page_numbered': self.is_page_numbered(page),
-                'page_number_coordinates': self.page_numbers_and_coordinates(page),
-                'is_landscaped': self.is_landscaped(page),
-                'is_portraited': self.is_portraited(page),
-                'orientation': 'landscape' if self.is_landscaped(page) else 'portrait',
-                'text_percentage': self.get_text_percentage(page)
+                "side": "single" if self.is_single_side_page(page) else "double",
+                "is_page_numbered": self.is_page_numbered(page),
+                "page_number_coordinates": self.page_numbers_and_coordinates(page),
+                "is_landscaped": self.is_landscaped(page),
+                "is_portraited": self.is_portraited(page),
+                "orientation": "landscape" if self.is_landscaped(page) else "portrait",
+                "text_percentage": self.get_text_percentage(page),
             }
 
     def get_page_margins(self, page):
-          page_rect = page.rect
-          page_width = page_rect.width
-          page_height = page_rect.height
+        page_rect = page.rect
+        page_width = page_rect.width
+        page_height = page_rect.height
 
-          text_blocks = page.get_text("blocks")
+        text_blocks = page.get_text("blocks")
 
-          # Initialize margins
-          top_margin = page_height
-          bottom_margin = page_height
-          left_margin = page_width
-          right_margin = page_width
+        # Initialize margins
+        top_margin = page_height
+        bottom_margin = page_height
+        left_margin = page_width
+        right_margin = page_width
 
-          # Calculate the margins
-          for block in text_blocks:
-              block_rect = fitz.Rect(block[:4])
+        # Calculate the margins
+        for block in text_blocks:
+            block_rect = fitz.Rect(block[:4])
 
-              top_margin = min(top_margin, block_rect.y0)
-              bottom_margin = min(bottom_margin, page_height - block_rect.y1)
-              left_margin = min(left_margin, block_rect.x0)
-              right_margin = min(right_margin, page_width - block_rect.x1)
+            top_margin = min(top_margin, block_rect.y0)
+            bottom_margin = min(bottom_margin, page_height - block_rect.y1)
+            left_margin = min(left_margin, block_rect.x0)
+            right_margin = min(right_margin, page_width - block_rect.x1)
 
-          return {
-              'top': top_margin,
-              'bottom': bottom_margin,
-              'left': left_margin,
-              'right': right_margin
-          }
+        return {
+            "top": top_margin,
+            "bottom": bottom_margin,
+            "left": left_margin,
+            "right": right_margin,
+        }
 
     def is_blank_page(self, page):
         text_blocks = page.get_text("blocks")
@@ -114,7 +121,6 @@ class FitsAnalyzer:
         if not text_blocks and not image_list:
             return True
         return False
-
 
     def is_single_side_page(self, page):
         ## it'll be decided based on the left ma
@@ -125,12 +131,12 @@ class FitsAnalyzer:
 
     def is_page_numbered(self, page):
         text = page.get_text()
-        lat_lon_pattern = re.compile(r'([-+]?\d{1,2}\.\d+),\s*([-+]?\d{1,3}\.\d+)')
+        lat_lon_pattern = re.compile(r"([-+]?\d{1,2}\.\d+),\s*([-+]?\d{1,3}\.\d+)")
         matches = lat_lon_pattern.findall(text)
         return bool(matches)
 
     def page_numbers_and_coordinates(self, page):
-        lat_lon_pattern = re.compile(r'([-+]?\d{1,2}\.\d+),\s*([-+]?\d{1,3}\.\d+)')
+        lat_lon_pattern = re.compile(r"([-+]?\d{1,2}\.\d+),\s*([-+]?\d{1,3}\.\d+)")
         text = page.get_text()
         matches = lat_lon_pattern.findall(text)
         return matches
