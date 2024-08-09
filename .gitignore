@@ -4,3 +4,4 @@
 env/
 staticfiles/
 media/
+.env
