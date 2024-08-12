@@ -18,10 +18,17 @@ def upload_to(instance, filename):
 
 
 class ReviewRequest(BaseModel):
+    parent = models.ForeignKey(
+        "self", on_delete=models.CASCADE, null=True, blank=True, related_name="children"
+    )
     status = models.CharField(max_length=100, default="pending")
     reviewer = models.ForeignKey("users.User", on_delete=models.CASCADE)
     document = models.FileField(upload_to=upload_to)
     comments = models.TextField()
+    top_margin = models.FloatField(null=True, blank=True)
+    bottom_margin = models.FloatField(null=True, blank=True)
+    left_margin = models.FloatField(null=True, blank=True)
+    right_margin = models.FloatField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Review Request"
@@ -63,6 +70,7 @@ class PageResult(BaseModel):
         max_length=100
     )  # method or service which was used to extract the data
     details = models.JSONField()
+    flaged = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{str(self.review_request.id)} - {self.page_number}"
@@ -78,26 +86,48 @@ class FitsAnalyzer:
         self.pdf = fitz.open(pdf_path)
         self.analysis = {}
         self.analyse()
+        self.review_request = review_request
         self.save_results(review_request)
 
     def save_results(self, review_request_id):
         for page_num, details in self.analysis.items():
+            matches_margins = self.match_margins(details)
+            details["matches_margins"] = matches_margins
             PageResult.objects.create(
                 review_request_id=review_request_id,
                 page_number=page_num,
                 service="fitz",
                 details=details,
+                flagged=(not matches_margins),
             )
+
+    def match_margins(self, details):
+        if (
+            self.review_request.top_margin
+            == self.points_to_inches(details["margins"]["top"])
+            and self.review_request.bottom_margin
+            == self.points_to_inches(details["margins"]["bottom"])
+            and self.review_request.left_margin
+            == self.points_to_inches(details["margins"]["left"])
+            and self.review_request.right_margin
+            == self.points_to_inches(details["margins"]["right"])
+        ):
+            return True
+        return False
+
+    def points_to_inches(self, points):
+        return points / 72
 
     def analyse(self):
         num_pages = self.pdf.page_count
         for page_num in range(num_pages):
             page = self.pdf.load_page(page_num)
+            margins = self.get_page_margins(page)
             self.analysis[page_num] = {
-                "margins": self.get_page_margins(page),
+                "margins": margins,
                 "is_blank": self.is_blank_page(page),
-                # 'is_single_side': self.is_single_side_page(page),
-                # 'is_double_side': self.is_double_side_page(page),
+                "is_single_side": self.is_single_side_page(margins),
+                "is_double_side": self.is_double_side_page(page_num, margins),
                 "side": "single" if self.is_single_side_page(page) else "double",
                 "is_page_numbered": self.is_page_numbered(page),
                 "page_number_coordinates": self.page_numbers_and_coordinates(page),
@@ -139,17 +169,24 @@ class FitsAnalyzer:
     def is_blank_page(self, page):
         text_blocks = page.get_text("blocks")
         image_list = page.get_images(full=True)
+        # remove tabs and newlines
+        text_blocks = [
+            block[4].replace("\n", "").replace("\t", "") for block in text_blocks
+        ]
 
         if not text_blocks and not image_list:
             return True
         return False
 
-    def is_single_side_page(self, page):
-        ## it'll be decided based on the left ma
-        return 0
+    def is_single_side_page(self, margins):
+        # if left margin and right margin are equal then it is a single side page
+        if margins["left"] == margins["right"]:
+            return true
 
-    def is_double_side_page(self, page):
-        return 0
+    def is_double_side_page(self, page_num, margins):
+        ## if page number is even then the left margine should be greater than right margin
+        if page_num % 2 == 0 and margins["left"] > margins["right"]:
+            return True
 
     def is_page_numbered(self, page):
         text = page.get_text()

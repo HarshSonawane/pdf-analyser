@@ -61,3 +61,12 @@
     #         return True
 
     #     return False
+
+
+Match with this
+  left - 1.5
+  right - 1
+  bottom - 1
+  top - 1
+
+Also show if page number is available or not in response

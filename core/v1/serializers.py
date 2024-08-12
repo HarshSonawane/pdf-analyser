@@ -4,9 +4,14 @@ from core.models import ReviewRequest, PageResult
 
 
 class ReviewRequestSerializer(serializers.ModelSerializer):
+    document_name = serializers.SerializerMethodField()
+
     class Meta:
         model = ReviewRequest
-        fields = ["id", "document", "reviewer", "status", "created_at"]
+        fields = ["id", "document", "reviewer", "document_name", "status", "created_at"]
+
+    def get_document_name(self, obj):
+        return obj.document.name.split("/")[-1]
 
 
 class PageResultSerializer(serializers.ModelSerializer):

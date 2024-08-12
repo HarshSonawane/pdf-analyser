@@ -54,12 +54,22 @@ class PageResultListCreateView(generics.ListCreateAPIView):
     queryset = PageResult.objects.all()
     authentication_classes = [JWTAuthentication, TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
+    page_size = 1000
 
     def get_queryset(self):
         review_requests_pk = self.kwargs.get("review_requests_pk")
         if review_requests_pk:
-            return PageResult.objects.filter(review_request=review_requests_pk)
-        return PageResult.objects.filter(review_request__reviewer=self.request.user)
+            queryset = PageResult.objects.filter(review_request=review_requests_pk)
+        else:
+            queryset = PageResult.objects.filter(
+                review_request__reviewer=self.request.user
+            )
+
+        flaged = self.request.query_params.get("flaged", None)
+        if flaged == 1:
+            queryset = queryset.filter(flaged=True)
+
+        return queryset
 
     def get(self, request, *args, **kwargs):
         review_request_data = None
