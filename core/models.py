@@ -86,7 +86,12 @@ class FitsAnalyzer:
         self.pdf = fitz.open(pdf_path)
         self.analysis = {}
         self.analyse()
-        self.review_request = review_request
+        try:
+            self.review_request = ReviewRequest.objects.get(id=review_request)
+        except ReviewRequest.DoesNotExist:
+            self.review_request = None
+            return None
+
         self.save_results(review_request)
 
     def save_results(self, review_request_id):
@@ -98,7 +103,7 @@ class FitsAnalyzer:
                 page_number=page_num,
                 service="fitz",
                 details=details,
-                flagged=(not matches_margins),
+                flaged=(not matches_margins),
             )
 
     def match_margins(self, details):
@@ -128,7 +133,7 @@ class FitsAnalyzer:
                 "is_blank": self.is_blank_page(page),
                 "is_single_side": self.is_single_side_page(margins),
                 "is_double_side": self.is_double_side_page(page_num, margins),
-                "side": "single" if self.is_single_side_page(page) else "double",
+                "side": "single" if self.is_single_side_page(margins) else "double",
                 "is_page_numbered": self.is_page_numbered(page),
                 "page_number_coordinates": self.page_numbers_and_coordinates(page),
                 "is_landscaped": self.is_landscaped(page),
@@ -181,7 +186,7 @@ class FitsAnalyzer:
     def is_single_side_page(self, margins):
         # if left margin and right margin are equal then it is a single side page
         if margins["left"] == margins["right"]:
-            return true
+            return True
 
     def is_double_side_page(self, page_num, margins):
         ## if page number is even then the left margine should be greater than right margin

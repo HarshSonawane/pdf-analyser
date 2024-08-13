@@ -55,6 +55,7 @@ class PageResultListCreateView(generics.ListCreateAPIView):
     authentication_classes = [JWTAuthentication, TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     page_size = 1000
+    pagination_class = None
 
     def get_queryset(self):
         review_requests_pk = self.kwargs.get("review_requests_pk")
@@ -85,6 +86,10 @@ class PageResultListCreateView(generics.ListCreateAPIView):
         response = super().get(request, *args, **kwargs)
         if review_request_data:
             response.data["review_request"] = review_request_data
+
+        response.data["error_pages"] = PageResult.objects.filter(
+            review_request=review_request, flaged=True
+        ).values_list("page_number", flat=True)
 
         return response
 
