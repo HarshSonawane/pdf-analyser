@@ -74,24 +74,31 @@ class PageResultListCreateView(generics.ListCreateAPIView):
 
     def get(self, request, *args, **kwargs):
         review_request_data = None
+        error_pages = []
         review_requests_pk = self.kwargs.get("review_requests_pk")
         if review_requests_pk:
             try:
                 review_request = ReviewRequest.objects.get(pk=review_requests_pk)
+
+                review_request_data = ReviewRequestSerializer(review_request).data
+
+                error_pages = PageResult.objects.filter(
+                    review_request=review_request, flaged=True
+                ).values_list("page_number", flat=True)
+
             except ObjectDoesNotExist:
                 raise Http404
 
-            review_request_data = ReviewRequestSerializer(review_request).data
-
         response = super().get(request, *args, **kwargs)
-        if review_request_data:
-            response.data["review_request"] = review_request_data
 
-        response.data["error_pages"] = PageResult.objects.filter(
-            review_request=review_request, flaged=True
-        ).values_list("page_number", flat=True)
-
-        return response
+        return Response(
+            {
+                "review_request": review_request_data,
+                "error_pages": error_pages,
+                "results": response.data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     def perform_create(self, serializer):
         try:
