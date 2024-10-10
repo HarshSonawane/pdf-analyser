@@ -139,8 +139,8 @@ if __name__ == "__main__":
     # input_file = "data/Test_Doc4_1.pdf"
     # output_file = "data/Test_Doc4_1_output.pdf"
 
-    input_file = "data/paper3.pdf"
-    output_file = "data/paper3_output.pdf"
+    input_file = "data/Test3.pdf"
+    output_file = "data/Test3_output.pdf"
 
 
     output = PdfWriter()

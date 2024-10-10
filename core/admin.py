@@ -13,7 +13,7 @@ admin.site.register(ReviewRequest, ReviewRequestAdmin)
 
 
 class PageResultAdmin(admin.ModelAdmin):
-    list_display = ('review_request', 'page_number', 'service', 'is_active', 'created_at', 'updated_at')
+    list_display = ('review_request', 'page_number', 'service', 'flaged', 'is_active', 'created_at', 'updated_at')
     list_filter = ('is_active', 'created_at', 'updated_at')
     search_fields = ('document', 'page_number', 'service')
     readonly_fields = ('created_at', 'updated_at')

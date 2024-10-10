@@ -3,12 +3,14 @@ from app.models import BaseModel
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
+from django.core.files.base import ContentFile
 
 import boto3
 import tempfile
 from io import BytesIO
 import fitz
 import re
+from services.plumber_analyzer import PlumberAnalyzer
 
 USE_S3 = settings.USE_S3
 
@@ -29,6 +31,7 @@ class ReviewRequest(BaseModel):
     bottom_margin = models.FloatField(null=True, blank=True)
     left_margin = models.FloatField(null=True, blank=True)
     right_margin = models.FloatField(null=True, blank=True)
+    output = models.FileField(upload_to="output/", null=True, blank=True)
 
     class Meta:
         verbose_name = "Review Request"
@@ -53,14 +56,47 @@ def review_request_post_save(sender, instance, created, **kwargs):
                 tmp_file_path = tmp_file.name
 
             try:
-                fitz_analyzer = FitsAnalyzer(tmp_file_path, instance.id)
-                document_stream.close()
+                # fitz_analyzer = FitsAnalyzer(tmp_file_path, instance.id)
+                # document_stream.close()
+                service = PlumberAnalyzer(tmp_file_path)
+                print(service)
+                output_path = service.output
+                results_array = service.results
+                pdf_bytes = service.get_pdf_bytes()
+                pdf_file = ContentFile(pdf_bytes.read(), name=f"{instance.id}_output.pdf")
+                instance.output.save(pdf_file.name, pdf_file)
+                instance.save()
+                for details in results_array:
+                    page_num = details["page_number"]
+                    PageResult.objects.create(
+                        review_request=instance,
+                        page_number=page_num,
+                        service="plumber",
+                        details=details,
+                        flaged=not details["inside_borders"],
+                    )
             finally:
                 tmp_file.close()
         else:
             document_path = instance.document.path
-            fitz_analyzer = FitsAnalyzer(document_path, instance.id)
-            instance.document.close()
+            # fitz_analyzer = FitsAnalyzer(document_path, instance.id)
+            # instance.document.close()
+            service = PlumberAnalyzer(document_path)
+            print(service)
+            pdf_bytes = service.get_pdf_bytes()
+            pdf_file = ContentFile(pdf_bytes.read(), name=f"{instance.id}_output.pdf")
+            instance.output.save(pdf_file.name, pdf_file)
+            instance.save()
+            results_array = service.results
+            for details in results_array:
+                page_num = details["page_number"]
+                PageResult.objects.create(
+                    review_request=instance,
+                    page_number=page_num,
+                    service="plumber",
+                    details=details,
+                    flaged=not details["inside_borders"],
+                )
 
 
 class PageResult(BaseModel):
@@ -130,7 +166,7 @@ class FitsAnalyzer:
             margins = self.get_page_margins(page)
             self.analysis[page_num] = {
                 "margins": margins,
-                "is_blank": self.is_blank_page(page),
+                "is_blank": self.is_blank_page(page, page_num),
                 "is_single_side": self.is_single_side_page(margins),
                 "is_double_side": self.is_double_side_page(page_num, margins),
                 "side": "single" if self.is_single_side_page(margins) else "double",
@@ -171,13 +207,16 @@ class FitsAnalyzer:
             "right": right_margin,
         }
 
-    def is_blank_page(self, page):
+    def is_blank_page(self, page, page_num):
         text_blocks = page.get_text("blocks")
         image_list = page.get_images(full=True)
         # remove tabs and newlines
         text_blocks = [
             block[4].replace("\n", "").replace("\t", "") for block in text_blocks
         ]
+
+        if page_num == 3:
+            breakpoint()
 
         if not text_blocks and not image_list:
             return True
