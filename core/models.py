@@ -98,6 +98,9 @@ def review_request_post_save(sender, instance, created, **kwargs):
                     flaged=not details["inside_borders"],
                 )
 
+        instance.status = "completed"
+        instance.save()
+
 
 class PageResult(BaseModel):
     review_request = models.ForeignKey(ReviewRequest, on_delete=models.CASCADE)
