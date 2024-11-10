@@ -54,7 +54,7 @@ class PlumberAnalyzer:
                     "page_number": i + 1,
                     "inside_borders": margines_followed and images_inside_margins,
                     "text_percentage": text_percentage,
-                    "is_blank": not page.extract_text() or whitespace or newline or only_page_number,
+                    "is_blank": self.is_page_blank(page),
                 }
 
                 self.results.append(result_object)
@@ -138,3 +138,10 @@ class PlumberAnalyzer:
         merged_page.merge_page(original_page)
         merged_page.merge_page(overlay_page.pages[0])  # Overlay the first (and only) page from overlay PDF
         return merged_page
+
+    def is_page_blank(self, page):
+        length = len(page.extract_text().strip())
+        images = len(page.images)
+        tables = len(page.extract_tables())
+        only_page_number = page.extract_text().isdigit()
+        return (length == 0 or length == 1 or length == 2) and images == 0 and tables == 0 or  only_page_number

@@ -15,14 +15,30 @@ class ReviewRequestSerializer(serializers.ModelSerializer):
 
 
 class PageResultSerializer(serializers.ModelSerializer):
+    details = serializers.SerializerMethodField()
+
     class Meta:
         model = PageResult
         fields = [
             "id",
             "review_request",
             "page_number",
+            "flaged",
             "service",
             "details",
             "created_at",
         ]
         read_only_fields = ["created_at"]
+
+
+    def get_details(self, obj):
+        errors = {}
+        # obj.details is dict
+        # only get is_blank and inside_borders
+        if obj.details.get("is_blank"):
+            errors["is_blank"] = _("Page is blank")
+
+        if not obj.details.get("inside_borders"):
+            errors["margins_not_followed"] = _("Data is outside the borders")
+
+        return errors

@@ -73,7 +73,7 @@ def review_request_post_save(sender, instance, created, **kwargs):
                         page_number=page_num,
                         service="plumber",
                         details=details,
-                        flaged=not details["inside_borders"],
+                        flaged=((not details["inside_borders"]) or details["is_blank"]),
                     )
             finally:
                 tmp_file.close()
@@ -95,7 +95,7 @@ def review_request_post_save(sender, instance, created, **kwargs):
                     page_number=page_num,
                     service="plumber",
                     details=details,
-                    flaged=not details["inside_borders"],
+                    flaged=((not details["inside_borders"]) or details["is_blank"]),
                 )
 
         instance.status = "completed"
