@@ -67,10 +67,10 @@ class PageResultListCreateView(generics.ListCreateAPIView):
             )
 
         flaged = self.request.query_params.get("flaged", None)
-        if flaged == 1:
+        if flaged == "1":
             queryset = queryset.filter(flaged=True)
 
-        return queryset
+        return queryset.order_by("page_number")
 
     def get(self, request, *args, **kwargs):
         review_request_data = None

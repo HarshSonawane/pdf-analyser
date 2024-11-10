@@ -50,11 +50,18 @@ class PlumberAnalyzer:
                     modified_page = self.overlay_page(page_obj, margin_page)
                     self.output.add_page(modified_page)
 
+                blank = self.is_page_blank(page)
+                if blank:
+                    page_obj = pdf_reader.pages[i]
+                    margin_page = self.draw_boundries(page_obj, color=(0, 0, 1))
+                    modified_page = self.overlay_page(page_obj, margin_page)
+                    self.output.add_page(modified_page)
+
                 result_object = {
                     "page_number": i + 1,
                     "inside_borders": margines_followed and images_inside_margins,
                     "text_percentage": text_percentage,
-                    "is_blank": self.is_page_blank(page),
+                    "is_blank": blank,
                 }
 
                 self.results.append(result_object)
